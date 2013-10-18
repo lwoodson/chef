@@ -8,9 +8,12 @@ bash "relax permissions on passenger home dir" do
   code "chmod o+x #{passenger_home}"
 end
 
-execute "run phusion passenger installer" do
-  command "passenger-install-apache2-module -a"
-  user 'root'
+httpd_conf = File.join('etc', 'apache2', 'httpd.conf')
+if File.read(httpd_conf).scan(/Passenger/).empty?
+  execute "run phusion passenger installer" do
+    command "passenger-install-apache2-module -a"
+    user 'root'
+  end
 end
 
 passenger_root = `passenger-config --root`.strip

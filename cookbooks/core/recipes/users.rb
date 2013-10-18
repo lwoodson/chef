@@ -1,40 +1,53 @@
 node.default[:users].each do |new_user|  
-  user new_user do
-    home "/home/#{new_user}"
-    shell "/bin/bash"
-    supports manage_home: true
-    password "$1$tBKupeY1$b02PrirIvNfAgkoXj2Lx71"
-    action [:remove, :create]
+  unless new_user.root?
+    user new_user.username do
+      home new_user.home
+      shell "/bin/bash"
+      supports manage_home: true
+      # password1
+      password "$1$tBKupeY1$b02PrirIvNfAgkoXj2Lx71"
+      action [:remove, :create]
+    end
+
+    execute "expire user password" do
+      command "passwd -e #{new_user}"
+    end
+
+    if new_user.sudoer?
+      group "sudo" do
+        action [:create, :modify]
+        members "#{new_user}"
+        append true
+      end
+    end
   end
 
-  execute "expire user password" do
-    command "passwd -e #{new_user}"
-  end
-
-  directory "/home/#{new_user}/.ssh" do
-    owner new_user
-    group new_user
+  directory "#{new_user.home}/.ssh" do
+    owner new_user.username
+    group new_user.username
     mode 0700
+    recursive true
     action [:delete, :create]
   end
 
-  execute "fetch keys" do
-    cwd "/home/#{new_user}/.ssh"
-    user new_user
-    group new_user
-    command "curl https://github.com/#{new_user}.keys -o authorized_keys"
+  unless new_user.root?
+    execute "fetch authorized_keys for #{new_user}" do
+      cwd "#{new_user.home}/.ssh"
+      user new_user.username
+      group new_user.username
+      command "curl https://github.com/#{new_user}.keys -o authorized_keys"
+    end
+
+    execute "chmod authorized_keys" do
+      cwd "#{new_user.home}/.ssh"
+      command "chmod 0600 authorized_keys"
+    end
   end
 
-  execute "chmod keys" do
-    cwd "/home/#{new_user}/.ssh"
-    command "chmod 0600 authorized_keys"
-  end
-end
-
-node.default[:sudoers].each do |new_user|
-  group "sudo" do
-    action [:create, :modify]
-    members "#{new_user}"
-    append true
+  execute "generate key for #{new_user}" do
+    cwd "#{new_user.home}/.ssh"
+    user new_user.username
+    group new_user.username
+    command "ssh-keygen -P '' -f id_rsa -t rsa -C \"#{new_user.email}\""
   end
 end

@@ -26,6 +26,9 @@ template "/etc/apache2/httpd.conf" do
   variables passenger_root: passenger_root, default_ruby: default_ruby
 end
 
+# if you start using the gem 'foodcritic' http://www.foodcritic.io/ it'll start complaining about execute.
+# http://www.foodcritic.io/#FC048
+
 execute "restart webserver" do
   command "/etc/init.d/apache2 restart"
   user 'root'
